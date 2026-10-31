@@ -1,0 +1,36 @@
+# Воспроизводимый конвейер исследования H1/H2 на GUIDE (DVC, курс MLOps).
+#   dvc init                      # один раз в репозитории
+#   dvc add data/external/GUIDE_Train.csv
+#   dvc repro                     # пересчитывает только изменившиеся стадии
+# Протокол исследования — docs/research-protocol.md.
+stages:
+  prepare:
+    cmd: python -m limen.research prepare --config configs/experiments/guide_audit.yaml
+    deps:
+      - data/external/GUIDE_Train.csv
+      - configs/experiments/guide_audit.yaml
+      - src/limen/research/guide.py
+    outs:
+      - data/processed/guide_incidents.csv.gz
+      - data/processed/guide_incidents.csv.meta.json
+
+  run:
+    cmd: python -m limen.research run --config configs/experiments/guide_audit.yaml
+    deps:
+      - data/processed/guide_incidents.csv.gz
+      - configs/experiments/guide_audit.yaml
+      - src/limen/research
+      - src/limen/sampling
+      - src/limen/stats
+      - src/limen/audit
+    outs:
+      - reports/experiments/guide_audit/results.csv.gz
+      - reports/experiments/guide_audit/h2_efficiency.json:
+          cache: false
+      - reports/experiments/guide_audit/bias.csv:
+          cache: false
+    plots:
+      - reports/experiments/guide_audit/h1_validity.csv:
+          cache: false
+          x: budget
+          y: violation_rate

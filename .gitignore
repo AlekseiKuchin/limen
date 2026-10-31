@@ -1,0 +1,46 @@
+# --- Данные: никогда не коммитим (выгрузки SOC, ключи, результаты) ---
+data/*
+!data/README.md
+!data/*/
+data/*/*
+!data/*/.gitkeep
+reports/*
+!reports/.gitkeep
+secrets/*
+!secrets/README.md
+*.key
+*.pem
+*.p12
+*.pfx
+.env
+
+# --- Эксперименты ---
+mlruns/
+mlartifacts/
+notebooks/**/*.ipynb_checkpoints
+notebooks/**/output*
+/.dvc/cache/
+/.dvc/tmp/
+
+# --- Инструменты, собранные из исходников ---
+.tools/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,52 @@
+# Эксперимент H1/H2 на открытом наборе Microsoft GUIDE (лицензия CDLA-Permissive-2.0).
+# Протокол фиксируется до запуска: docs/research-protocol.md.
+
+data:
+  path: data/external/GUIDE_Train.csv
+  nrows: null                     # для отладки ограничьте число строк
+  attack_grade: TruePositive
+  processed_path: data/processed/guide_incidents.csv.gz   # кэш инцидентов; у отладочного и полного прогона — разные файлы
+  columns:                        # ПРОВЕРИТЬ по заголовку файла GUIDE
+    org: OrgId
+    incident: IncidentId
+    alert: AlertId
+    detector: DetectorId
+    category: Category
+    grade: IncidentGrade
+    timestamp: Timestamp
+    mitre: MitreTechniques
+    entity_type: EntityType
+
+split:
+  n_reps: 200                     # число случайных разбиений организаций
+  train_frac: 0.5                 # доля организаций для обучения модели-«автозакрывателя»
+  seed: 20261027
+
+autocloser:                       # CatBoost, только CPU
+  iterations: 300
+  depth: 6
+  learning_rate: 0.1
+  max_train_rows: 300000
+  thread_count: -1
+
+audit:
+  close_shares: [0.30, 0.68]      # доли автозакрытия: ~30% (Kaspersky MDR) и 68% (MaxPatrol O2) — заявления вендоров
+  budgets: [100, 300, 1000]
+  schemes: [uniform, stratified, active, naive_top]
+  confidence: 0.95
+  stratum_column: top_detector
+  min_per_stratum: 2
+  active_floor: 0.2
+
+hypotheses:
+  h1_tolerance: 0.10              # допуск доли нарушений (вдвое больше номинальных 5%) — допущение автора
+  h2_budget: 300
+  h2_reduction: 0.20              # минимальное снижение медианной границы FNR — допущение автора
+  h2_baseline: uniform
+  h2_candidate: active
+
+output:
+  dir: reports/experiments/guide_audit
+
+tracking:
+  experiment: limen-guide-audit   # MLflow включается переменной LIMEN_MLFLOW_URI

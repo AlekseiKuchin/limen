@@ -1,0 +1,51 @@
+# Быстрый прогон для отладки конвейера (минуты, а не часы). Результаты не использовать в выводах.
+
+data:
+  path: data/external/GUIDE_Train.csv
+  nrows: 300000
+  attack_grade: TruePositive
+  processed_path: data/processed/guide_incidents_smoke.csv.gz   # кэш инцидентов; у отладочного и полного прогона — разные файлы
+  columns:
+    org: OrgId
+    incident: IncidentId
+    alert: AlertId
+    detector: DetectorId
+    category: Category
+    grade: IncidentGrade
+    timestamp: Timestamp
+    mitre: MitreTechniques
+    entity_type: EntityType
+
+split:
+  n_reps: 3
+  train_frac: 0.5
+  seed: 1
+
+autocloser:
+  iterations: 50
+  depth: 4
+  learning_rate: 0.2
+  max_train_rows: 50000
+  thread_count: -1
+
+audit:
+  close_shares: [0.30]
+  budgets: [100]
+  schemes: [uniform, stratified, active, naive_top]
+  confidence: 0.95
+  stratum_column: top_detector
+  min_per_stratum: 2
+  active_floor: 0.2
+
+hypotheses:
+  h1_tolerance: 0.10
+  h2_budget: 100
+  h2_reduction: 0.20
+  h2_baseline: uniform
+  h2_candidate: active
+
+output:
+  dir: reports/experiments/guide_smoke
+
+tracking:
+  experiment: limen-guide-smoke

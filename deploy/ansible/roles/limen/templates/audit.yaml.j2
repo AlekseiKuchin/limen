@@ -1,0 +1,20 @@
+# Управляется Ansible (роль limen). Значения фиксируются в протоколе пилота до выгрузки.
+confidence: {{ limen_confidence }}
+target_for: {{ limen_target_for }}
+audited_sources:
+  - auto
+  - suppression
+
+sampling:
+  scheme: uniform
+  budget: {{ limen_budget }}
+  seed: {{ limen_seed }}
+  stratum_column: rule_id
+  min_per_stratum: 5
+  active_floor: 0.2
+
+estimation:
+  bound_method: binomial
+  stratified_method: union
+  simultaneous_rules: false
+  unknown_label_policy: as_attack

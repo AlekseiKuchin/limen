@@ -1,0 +1,10 @@
+---
+# Установка «Лимен» на изолированный хост заказчика без доступа к интернету.
+# Колёса собираются заранее из исходников (make image или toolchain/python-wheels/build-wheels.sh)
+# и копируются на хост; установка идёт только из них.
+#   ansible-playbook -i inventory.ini site.yml -e limen_wheelhouse_local=/path/to/wheels
+- name: Установить «Лимен»
+  hosts: limen
+  become: true
+  roles:
+    - limen

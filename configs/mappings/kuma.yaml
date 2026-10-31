@@ -1,0 +1,32 @@
+# Выгрузка алертов Kaspersky KUMA через REST API (GET /api/v1/alerts со статусом closed).
+# Проверено по документации KUMA 3.2: в ответе есть поля correlationRuleID и closingReason;
+# причины закрытия: "responded", "incorrect data", "incorrect correlation rule".
+# ВНИМАНИЕ: по closingReason нельзя отличить автоматическое закрытие от ручного.
+# Поля, помеченные «ПРОВЕРИТЬ», нужно сверить с документацией вашей версии KUMA и с SOAR заказчика.
+
+format: json
+json:
+  records_path: null        # ответ — массив алертов; если вложен, укажите ключ
+
+columns:
+  alert_id: id
+  rule_id: correlationRuleID
+  closing_reason: closingReason
+  closed_at: lastSeen        # ПРОВЕРИТЬ: поле времени закрытия
+
+closing_source:
+  # Нужен признак того, кто закрыл алерт: сервисная учётная запись SOAR, плейбук, модуль ИИ.
+  field: closedBy            # ПРОВЕРИТЬ: такого поля может не быть в выгрузке
+  values:
+    soar-service: auto       # ПРОВЕРИТЬ: имя сервисной учётной записи SOAR у заказчика
+  default: unknown
+
+verdict:
+  field: closingReason
+  values:
+    responded: attack                      # ДОПУЩЕНИЕ: «отреагировали» = подтверждённый инцидент
+    incorrect data: benign
+    incorrect correlation rule: benign
+  default: unknown
+
+entities: {}                 # добавьте поля с учётками, хостами и адресами, если они есть в выгрузке

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{ csp }}">
+<meta name="referrer" content="no-referrer">
+<title>{{ title }}</title>
+<style>{{ css | safe }}</style>
+</head>
+<body>
+<h1>{{ title }}</h1>
+<p class="muted">Разберите каждый алерт так же, как на обычном дежурстве, и выберите вердикт. «Не знаю» при расчёте считается атакой. Страница работает без сети: метки сохраняются в этом браузере и выгружаются в CSV кнопкой ниже.</p>
+
+<div class="bar">
+  <label>Ваш псевдоним<input id="analyst" type="text" value="analyst-1" autocomplete="off"></label>
+  <span><progress id="progress" value="0" max="1"></progress> <span id="progress-text"></span></span>
+  <button id="btn-download" type="button">Скачать метки (CSV)</button>
+  <label>Продолжить с файла меток<input id="resume" type="file" accept=".csv,text/csv"></label>
+  <span id="resume-status" class="muted"></span>
+</div>
+
+<section id="card" class="card">
+  <h2>Алерт <span id="alert-id"></span></h2>
+  <table><tbody id="context"></tbody></table>
+  <label for="technique">Техника MITRE ATT&amp;CK, если это атака (например, T1078 или T1059.001)</label>
+  <input id="technique" type="text" autocomplete="off" placeholder="T1078">
+  <div id="technique-error" class="error" hidden>Формат техники: T1234 или T1234.001</div>
+  <p><label for="comment">Комментарий (необязательно)</label><textarea id="comment"></textarea></p>
+  <div class="verdicts">
+    <button id="btn-attack" class="attack" type="button">Атака</button>
+    <button id="btn-benign" class="benign" type="button">Не атака</button>
+    <button id="btn-unknown" class="unknown" type="button">Не знаю</button>
+    <button id="btn-skip" type="button">Отложить</button>
+  </div>
+</section>
+
+<section id="done" class="card" hidden>
+  <h2>Все алерты выборки размечены</h2>
+  <p>Скачайте метки в CSV и передайте их для расчёта: <code>limen estimate … --labels labels.csv</code>.</p>
+</section>
+
+<p class="footer">«Лимен» {{ version }} · план {{ plan_id }} · алертов в выборке: {{ n_rows }}</p>
+<script type="application/json" id="limen-data">{{ data_json | safe }}</script>
+<script>{{ js | safe }}</script>
+</body>
+</html>

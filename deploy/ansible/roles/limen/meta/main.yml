@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: limen
+  author: Автор проекта
+  description: Установка «Лимен» на изолированный хост из колёс, собранных из исходников
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions: [bookworm, trixie]
+dependencies: []

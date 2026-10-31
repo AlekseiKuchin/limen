@@ -1,0 +1,20 @@
+---
+limen_version: "0.2.0"
+limen_user: limen
+limen_group: limen
+limen_uid: 10001
+limen_home: /opt/limen
+limen_venv: "{{ limen_home }}/venv"
+limen_data_dir: /var/lib/limen
+limen_python: python3
+# Каталог с колёсами на управляющей машине (limen и все зависимости, собранные из исходников)
+limen_wheelhouse_local: "{{ playbook_dir }}/../../dist/wheelhouse"
+# Ставить python3-venv из репозитория ОС (в контуре — из его зеркала)
+limen_install_system_packages: true
+# Каталог textfile collector node_exporter; пусто — метрики не выводятся
+limen_textfile_dir: ""
+# Параметры аудита по умолчанию (configs/audit.example.yaml); значения фиксируются в протоколе пилота
+limen_confidence: 0.95
+limen_target_for: 0.01
+limen_budget: 300
+limen_seed: 20261027

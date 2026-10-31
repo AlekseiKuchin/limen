@@ -1,0 +1,90 @@
+---
+- name: Пакет для виртуальных окружений Python
+  ansible.builtin.package:
+    name: python3-venv
+    state: present
+  when: limen_install_system_packages | bool
+
+- name: Группа «Лимен»
+  ansible.builtin.group:
+    name: "{{ limen_group }}"
+    gid: "{{ limen_uid }}"
+    system: true
+
+- name: Системный пользователь без входа в систему
+  ansible.builtin.user:
+    name: "{{ limen_user }}"
+    uid: "{{ limen_uid }}"
+    group: "{{ limen_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ limen_home }}"
+    create_home: false
+
+- name: Каталоги программы
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: "{{ limen_group }}"
+    mode: "0750"
+  loop:
+    - "{{ limen_home }}"
+    - "{{ limen_home }}/wheelhouse"
+    - "{{ limen_home }}/configs"
+
+- name: Каталоги данных и отчётов (доступ только у пользователя «Лимен»)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ limen_user }}"
+    group: "{{ limen_group }}"
+    mode: "0700"
+  loop:
+    - "{{ limen_data_dir }}"
+    - "{{ limen_data_dir }}/raw"
+    - "{{ limen_data_dir }}/interim"
+    - "{{ limen_data_dir }}/reports"
+    - "{{ limen_data_dir }}/secrets"
+
+- name: Колёса, собранные из исходников
+  ansible.builtin.copy:
+    src: "{{ limen_wheelhouse_local }}/"
+    dest: "{{ limen_home }}/wheelhouse/"
+    owner: root
+    group: "{{ limen_group }}"
+    mode: "0640"
+
+- name: Виртуальное окружение
+  ansible.builtin.command:
+    cmd: "{{ limen_python }} -m venv {{ limen_venv }}"
+    creates: "{{ limen_venv }}/bin/python"
+
+- name: Установка только из локальных колёс, без индекса пакетов
+  ansible.builtin.pip:
+    name: "limen=={{ limen_version }}"
+    virtualenv: "{{ limen_venv }}"
+    extra_args: "--no-index --find-links {{ limen_home }}/wheelhouse"
+
+- name: Параметры аудита
+  ansible.builtin.template:
+    src: audit.yaml.j2
+    dest: "{{ limen_home }}/configs/audit.yaml"
+    owner: root
+    group: "{{ limen_group }}"
+    mode: "0640"
+
+- name: Команда limen в PATH
+  ansible.builtin.file:
+    src: "{{ limen_venv }}/bin/limen"
+    dest: /usr/local/bin/limen
+    state: link
+
+- name: Каталог для метрик Prometheus
+  ansible.builtin.file:
+    path: "{{ limen_textfile_dir }}"
+    state: directory
+    owner: "{{ limen_user }}"
+    group: "{{ limen_group }}"
+    mode: "0755"
+  when: limen_textfile_dir | length > 0

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Проверки перед коммитом без внешних фреймворков. Подключение: make hooks
+# 1) запрет данных, ключей и отчётов; 2) Ruff; 3) поиск секретов Trivy (если установлен).
+set -euo pipefail
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+[ -z "$staged" ] && exit 0
+
+blocked="$(printf '%s\n' "$staged" | grep -E '^(data|secrets|reports)/' | grep -vE '(^|/)(README\.md|\.gitkeep)$' || true)"
+keys="$(printf '%s\n' "$staged" | grep -E '\.(key|pem|p12|pfx)$' || true)"
+if [ -n "$blocked$keys" ]; then
+  echo "Коммит остановлен: данные, ключи и отчёты в репозиторий не попадают:" >&2
+  printf '%s\n' $blocked $keys | sort -u >&2
+  exit 1
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  uv run --quiet ruff check src tests scripts
+  uv run --quiet ruff format --check src tests scripts
+else
+  echo "Предупреждение: uv не найден — проверка Ruff пропущена" >&2
+fi
+
+if command -v trivy >/dev/null 2>&1; then
+  trivy fs --quiet --scanners secret --exit-code 1 .
+else
+  echo "Предупреждение: trivy не найден — поиск секретов пропущен (make trivy-build)" >&2
+fi

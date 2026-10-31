@@ -1,0 +1,33 @@
+# Правила оповещений Prometheus по метрикам «Лимен» (limen metrics → textfile collector node_exporter).
+# Пороги — пример; их значения фиксируются вместе с параметрами аудита.
+groups:
+  - name: limen
+    rules:
+      - alert: LimenFnrBoundHigh
+        expr: limen_fnr_upper > 0.10
+        labels:
+          severity: warning
+        annotations:
+          summary: "Граница доли пропущенных атак выше 10%"
+          description: "Аудит {{ $labels.audit }}: верхняя граница FNR {{ $value | humanizePercentage }}."
+      - alert: LimenRuleLeaks
+        expr: limen_rule_decision{decision="leaks"} == 1
+        labels:
+          severity: critical
+        annotations:
+          summary: "Правило теряет атаки при автозакрытии"
+          description: "Аудит {{ $labels.audit }}, правило {{ $labels.rule_id }}: нижняя граница доли атак выше порога."
+      - alert: LimenApproximateBound
+        expr: limen_finite_sample_valid == 0
+        labels:
+          severity: info
+        annotations:
+          summary: "Граница аудита приближённая"
+          description: "Аудит {{ $labels.audit }} посчитан схемой без гарантии на конечной выборке."
+      - alert: LimenAuditStale
+        expr: time() - max(limen_audit_timestamp_seconds) > 35 * 24 * 3600
+        labels:
+          severity: warning
+        annotations:
+          summary: "Аудит автозакрытия не обновлялся больше 35 дней"
+          description: "Последний расчёт аудита — {{ $value | humanizeDuration }} назад."

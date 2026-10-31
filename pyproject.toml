@@ -1,0 +1,120 @@
+[build-system]
+# setuptools — сборщик на чистом Python без внешних зависимостей: сам собирается из исходников
+# (docs/adr/0003-build-from-source.md). Вариант из экосистемы uv — uv_build, но он поставляется
+# бинарным пакетом на Rust.
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "limen"
+version = "0.2.0"
+description = "Лимен — независимый статистический аудит автоматического закрытия алертов в SOC"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Автор проекта" }]
+# Лицензия не выбрана: решение после консультации по правам на код (docs/compliance/law.md).
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Private :: Do Not Upload",
+]
+# Ядро ставится в контур заказчика: минимум зависимостей, ни одной сетевой (tests/test_no_network.py).
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pydantic>=2.6",
+    "pyyaml>=6.0.1",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+# Исследование на открытом наборе GUIDE — не входит в поставку заказчику
+research = [
+    "scipy>=1.11",
+    "catboost>=1.2.5",
+    "mlflow>=2.14",
+]
+
+[project.scripts]
+limen = "limen.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "pandas-stubs>=2.2",
+    "types-PyYAML>=6.0",
+    "setuptools>=68",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+limen = ["py.typed", "report/templates/*"]
+
+# ----------------------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",   # pycodestyle, pyflakes
+    "I",             # порядок импортов
+    "B",             # bugbear
+    "UP",            # pyupgrade
+    "SIM",           # упрощения
+    "N",             # именование
+    "S",             # правила безопасности (перенесены из bandit)
+    "RUF",
+    "PL",            # правила Pylint
+]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # кириллица в строках и комментариях — это нормально
+    "PLR0913",                     # много аргументов у функций расчёта — осознанно
+    "PLR2004",                     # «магические» числа в статистике (0.5, 1.0) читаются лучше без констант
+    "PLR0917",                     # позиционные аргументы в статистических функциях — осознанно
+    "PLC0415",                     # ленивый импорт необязательных зависимостей (catboost, mlflow)
+    "PLR0915",                     # длинная функция разбора аргументов CLI — осознанно
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004", "S311"]
+"scripts/**" = ["S311"]
+"src/limen/synthetic.py" = ["S311"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ----------------------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["scipy.*", "catboost.*", "mlflow.*"]
+ignore_missing_imports = true
+
+# ----------------------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: долгие статистические проверки покрытия",
+    "research: тесты исследовательского контура (нужен extra [research])",
+]
+
+[tool.coverage.run]
+source = ["limen"]
+omit = ["src/limen/research/tracking.py", "src/limen/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 75

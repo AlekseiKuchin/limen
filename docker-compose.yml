@@ -1,0 +1,25 @@
+# Запуск аудита в контейнере без сети (строгий режим, всё у заказчика):
+#   docker compose run --rm audit validate data/raw/export.csv --mapping configs/mappings/generic_csv.yaml
+# Точка входа образа — команда limen, поэтому её имя не повторяется.
+# Офлайн-страница разметки — обычный HTML-файл (limen plan … --page-out): сервер для неё не нужен.
+
+services:
+  audit:
+    build: .
+    image: limen:0.2.0
+    network_mode: "none"          # аудит выгрузки не нуждается в сети
+    read_only: true               # корневая ФС только для чтения
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true    # профиль seccomp Docker по умолчанию остаётся включённым
+    tmpfs:
+      - /tmp
+    environment:
+      LIMEN_PSEUDO_KEY_FILE: /app/secrets/pseudo.key
+      LIMEN_AUDIT_LOG: /app/reports/limen-audit.jsonl
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./configs:/app/configs:ro
+      - ./secrets:/app/secrets:ro  # ключ обезличивания остаётся у заказчика

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отчёт аудита «Лимен»</title>
+<style>
+  :root { --fg:#1d232b; --muted:#5d6773; --line:#d9dee4; --bg:#ffffff; --accent:#1f5f99; --ok:#1d7a46; --bad:#b3261e; --warn:#8a6100; }
+  body { font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--fg); background: var(--bg); margin: 0 auto; max-width: 1080px; padding: 24px 16px; }
+  h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 18px; margin-top: 28px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .muted { color: var(--muted); } table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0; }
+  .kpi div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; } .kpi b { display: block; font-size: 22px; color: var(--accent); }
+  .safe { color: var(--ok); } .leaks { color: var(--bad); } .uncertain, .insufficient { color: var(--warn); }
+  .table-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Отчёт аудита автозакрытия «Лимен»</h1>
+<p class="muted">Сформирован {{ r.created_at }} · версия {{ r.version }} · схема {{ o.scheme }} · метод {{ o.method }}</p>
+
+<div class="kpi">
+  <div><b>{{ o.fnr_upper | pct }}</b>верхняя граница доли пропущенных атак (FNR)</div>
+  <div><b>{{ o.for_upper | pct }}</b>верхняя граница доли атак среди автозакрытых</div>
+  <div><b>{{ o.n_sampled | num }} из {{ o.n_closed | num }}</b>перепроверено алертов</div>
+  <div><b>{{ o.confidence | pct(0) }}</b>уверенность; гарантия {{ "на конечной выборке" if o.finite_sample_valid else "приближённая" }}</div>
+</div>
+
+<p>С уверенностью {{ o.confidence | pct(0) }} среди автозакрытых алертов не больше <b>{{ o.attacks_closed_upper | round(0, "floor") | num }}</b> атак:
+автоматизация теряет не больше <b>{{ o.fnr_upper | pct }}</b> всех атак за период (атак, найденных аналитиками в остальном потоке: {{ o.attacks_open | num }}).</p>
+
+<h2>Правила</h2>
+<p class="muted">Порог решения «можно автоматизировать»: доля атак среди автозакрытых не больше {{ cfg.target_for | pct }}.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Правило</th><th class="num">Автозакрыто</th><th class="num">Проверено</th><th class="num">Атак</th>
+    <th class="num">Граница доли атак</th><th class="num">Граница FNR</th><th>Решение</th><th class="num">Добрать</th></tr></thead>
+  <tbody>
+  {% for x in rules %}
+    <tr><td>{{ x.rule_id }}</td><td class="num">{{ x.n_closed | num }}</td><td class="num">{{ x.n_sampled | num }}</td>
+      <td class="num">{{ x.attacks_in_sample | num }}</td><td class="num">{{ x.for_upper | pct }}</td><td class="num">{{ x.fnr_upper | pct }}</td>
+      <td class="{{ x.decision }}">{{ x.decision_ru }}</td><td class="num">{{ x.extra_sample_needed if x.extra_sample_needed >= 0 else "—" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Разметка</h2>
+<p>Отобрано для перепроверки: {{ r.labeling.n_selected }}; размечено: {{ r.labeling.n_labeled }}; без метки: {{ r.labeling.n_missing }}.
+Медианное время на алерт: {{ (r.labeling.median_seconds_per_alert | num(0)) ~ " с" if r.labeling.median_seconds_per_alert is not none else "не измерено" }}.</p>
+
+{% if r.labeling.get("attack_techniques") %}
+<h3>Техники MITRE ATT&amp;CK у атак, найденных среди автозакрытых</h3>
+<table><thead><tr><th>Техника</th><th class="num">Атак в выборке</th></tr></thead><tbody>
+{% for t, c in r.labeling.attack_techniques.items() %}
+<tr><td>{{ t }}</td><td class="num">{{ c }}</td></tr>
+{% endfor %}
+</tbody></table>
+{% endif %}
+
+<h2>Методика и допущения</h2>
+<ul>
+  <li>Гарантия держится на случайном отборе по зафиксированному плану (зерно {{ cfg.sampling.seed }}), а не на предположениях о модели.</li>
+  <li>Метка аналитика при перепроверке считается верной; «не знаю» и неразмеченные — {{ "атаки (консервативно)" if cfg.estimation.unknown_label_policy == "as_attack" else "исключены" }}.</li>
+  <li>Границы по правилам {{ "скорректированы по Бонферрони" if cfg.estimation.simultaneous_rules else "маргинальные" }}.</li>
+  <li>Отчёт содержит только агрегаты; исходные события не покидали контур заказчика.</li>
+</ul>
+{% if r.inputs %}
+
+<h2>Целостность</h2>
+<p class="muted">Расчёт можно повторить командой <code>limen verify</code>: она сверяет SHA-256 входов и заново считает границы.</p>
+<div class="table-wrap"><table><thead><tr><th>Вход</th><th>SHA-256</th></tr></thead><tbody>
+{% for name, value in r.inputs.items() %}
+<tr><td>{{ name }}</td><td><code>{{ value }}</code></td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% if r.validation and r.validation.warnings %}
+
+<h2>Предупреждения проверки выгрузки</h2>
+<ul>
+  {% for w in r.validation.warnings %}
+  <li>{{ w }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+</body>
+</html>

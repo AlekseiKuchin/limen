@@ -1,0 +1,42 @@
+# Универсальная CSV-выгрузка закрытых алертов (формат синтетических данных и шаблон для своих выгрузок).
+# Ключи в columns — канонические поля «Лимен», значения — названия колонок в выгрузке.
+
+format: csv
+csv:
+  sep: ","
+  encoding: utf-8
+
+columns:
+  alert_id: id
+  rule_id: rule_id
+  rule_name: rule_name
+  closed_at: closed_at
+  closing_reason: closing_reason
+  score: vendor_score        # оценка вероятности атаки от вендора или своей модели (0..1), если есть
+  tenant: tenant             # клиент MSSP, если есть
+
+# Кто закрыл алерт. Без этого признака аудит невозможен: валидатор остановит работу.
+closing_source:
+  field: closed_by
+  values:
+    playbook: auto
+    ml_autoclose: auto
+    suppression: suppression
+    analyst: analyst
+  default: unknown
+
+# Вердикт аналитика для алертов, закрытых вручную (нужен для числа найденных атак A_O).
+verdict:
+  field: resolution
+  values:
+    true_positive: attack
+    false_positive: benign
+    benign_positive: benign
+  default: unknown
+
+# Колонки с персональными и чувствительными данными: обезличиваются ключом заказчика.
+# Значение — префикс идентификатора (метод «введение идентификаторов», приказ РКН №140).
+entities:
+  user: user
+  host: host
+  src_ip: ip
